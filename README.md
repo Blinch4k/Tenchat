@@ -1,75 +1,15 @@
 # Installation
-> `npm install --save @types/cors`
+> `npm install --save @types/node`
 
 # Summary
-This package contains type definitions for cors (https://github.com/expressjs/cors/).
+This package contains type definitions for node (https://nodejs.org/).
 
 # Details
-Files were exported from https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/cors.
-## [index.d.ts](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/cors/index.d.ts)
-````ts
-/// <reference types="node" />
-
-import { IncomingHttpHeaders } from "http";
-
-type StaticOrigin = boolean | string | RegExp | Array<boolean | string | RegExp>;
-
-type CustomOrigin = (
-    requestOrigin: string | undefined,
-    callback: (err: Error | null, origin?: StaticOrigin) => void,
-) => void;
-
-declare namespace e {
-    interface CorsRequest {
-        method?: string | undefined;
-        headers: IncomingHttpHeaders;
-    }
-    interface CorsOptions {
-        /**
-         * @default '*''
-         */
-        origin?: StaticOrigin | CustomOrigin | undefined;
-        /**
-         * @default 'GET,HEAD,PUT,PATCH,POST,DELETE'
-         */
-        methods?: string | string[] | undefined;
-        allowedHeaders?: string | string[] | undefined;
-        exposedHeaders?: string | string[] | undefined;
-        credentials?: boolean | undefined;
-        maxAge?: number | undefined;
-        /**
-         * @default false
-         */
-        preflightContinue?: boolean | undefined;
-        /**
-         * @default 204
-         */
-        optionsSuccessStatus?: number | undefined;
-    }
-    type CorsOptionsDelegate<T extends CorsRequest = CorsRequest> = (
-        req: T,
-        callback: (err: Error | null, options?: CorsOptions) => void,
-    ) => void;
-}
-
-declare function e<T extends e.CorsRequest = e.CorsRequest>(
-    options?: e.CorsOptions | e.CorsOptionsDelegate<T>,
-): (
-    req: T,
-    res: {
-        statusCode?: number | undefined;
-        setHeader(key: string, value: string): any;
-        end(): any;
-    },
-    next: (err?: any) => any,
-) => void;
-export = e;
-
-````
+Files were exported from https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node.
 
 ### Additional Details
- * Last updated: Mon, 20 Nov 2023 23:36:24 GMT
- * Dependencies: [@types/node](https://npmjs.com/package/@types/node)
+ * Last updated: Thu, 27 Mar 2025 03:13:14 GMT
+ * Dependencies: [undici-types](https://npmjs.com/package/undici-types)
 
 # Credits
-These definitions were written by [Alan Plum](https://github.com/pluma), and [Gaurav Sharma](https://github.com/gtpan77).
+These definitions were written by [Microsoft TypeScript](https://github.com/Microsoft), [Alberto Schiabel](https://github.com/jkomyno), [Alvis HT Tang](https://github.com/alvis), [Andrew Makarov](https://github.com/r3nya), [Benjamin Toueg](https://github.com/btoueg), [Chigozirim C.](https://github.com/smac89), [David Junger](https://github.com/touffy), [Deividas Bakanas](https://github.com/DeividasBakanas), [Eugene Y. Q. Shen](https://github.com/eyqs), [Hannes Magnusson](https://github.com/Hannes-Magnusson-CK), [Huw](https://github.com/hoo29), [Kelvin Jin](https://github.com/kjin), [Klaus Meinhardt](https://github.com/ajafff), [Lishude](https://github.com/islishude), [Mariusz Wiktorczyk](https://github.com/mwiktorczyk), [Mohsen Azimi](https://github.com/mohsen1), [Nikita Galkin](https://github.com/galkin), [Parambir Singh](https://github.com/parambirs), [Sebastian Silbermann](https://github.com/eps1lon), [Thomas den Hollander](https://github.com/ThomasdenH), [Wilco Bakker](https://github.com/WilcoBakker), [wwwy3y3](https://github.com/wwwy3y3), [Samuel Ainsworth](https://github.com/samuela), [Kyle Uehlein](https://github.com/kuehlein), [Thanik Bhongbhibhat](https://github.com/bhongy), [Marcin Kopacz](https://github.com/chyzwar), [Trivikram Kamat](https://github.com/trivikr), [Junxiao Shi](https://github.com/yoursunny), [Ilia Baryshnikov](https://github.com/qwelias), [ExE Boss](https://github.com/ExE-Boss), [Piotr Błażejewicz](https://github.com/peterblazejewicz), [Anna Henningsen](https://github.com/addaleax), [Victor Perin](https://github.com/victorperin), [NodeJS Contributors](https://github.com/NodeJS), [Linus Unnebäck](https://github.com/LinusU), [wafuwafu13](https://github.com/wafuwafu13), [Matteo Collina](https://github.com/mcollina), and [Dmitry Semigradsky](https://github.com/Semigradsky).
