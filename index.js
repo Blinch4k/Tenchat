@@ -1,176 +1,238 @@
-
-/**
- * Expose `Emitter`.
+/*!
+ * accepts
+ * Copyright(c) 2014 Jonathan Ong
+ * Copyright(c) 2015 Douglas Christopher Wilson
+ * MIT Licensed
  */
 
-exports.Emitter = Emitter;
+'use strict'
 
 /**
- * Initialize a new `Emitter`.
+ * Module dependencies.
+ * @private
+ */
+
+var Negotiator = require('negotiator')
+var mime = require('mime-types')
+
+/**
+ * Module exports.
+ * @public
+ */
+
+module.exports = Accepts
+
+/**
+ * Create a new Accepts object for the given req.
  *
- * @api public
+ * @param {object} req
+ * @public
  */
 
-function Emitter(obj) {
-  if (obj) return mixin(obj);
+function Accepts (req) {
+  if (!(this instanceof Accepts)) {
+    return new Accepts(req)
+  }
+
+  this.headers = req.headers
+  this.negotiator = new Negotiator(req)
 }
 
 /**
- * Mixin the emitter properties.
+ * Check if the given `type(s)` is acceptable, returning
+ * the best match when true, otherwise `undefined`, in which
+ * case you should respond with 406 "Not Acceptable".
  *
- * @param {Object} obj
- * @return {Object}
- * @api private
+ * The `type` value may be a single mime type string
+ * such as "application/json", the extension name
+ * such as "json" or an array `["json", "html", "text/plain"]`. When a list
+ * or array is given the _best_ match, if any is returned.
+ *
+ * Examples:
+ *
+ *     // Accept: text/html
+ *     this.types('html');
+ *     // => "html"
+ *
+ *     // Accept: text/*, application/json
+ *     this.types('html');
+ *     // => "html"
+ *     this.types('text/html');
+ *     // => "text/html"
+ *     this.types('json', 'text');
+ *     // => "json"
+ *     this.types('application/json');
+ *     // => "application/json"
+ *
+ *     // Accept: text/*, application/json
+ *     this.types('image/png');
+ *     this.types('png');
+ *     // => undefined
+ *
+ *     // Accept: text/*;q=.5, application/json
+ *     this.types(['html', 'json']);
+ *     this.types('html', 'json');
+ *     // => "json"
+ *
+ * @param {String|Array} types...
+ * @return {String|Array|Boolean}
+ * @public
  */
 
-function mixin(obj) {
-  for (var key in Emitter.prototype) {
-    obj[key] = Emitter.prototype[key];
+Accepts.prototype.type =
+Accepts.prototype.types = function (types_) {
+  var types = types_
+
+  // support flattened arguments
+  if (types && !Array.isArray(types)) {
+    types = new Array(arguments.length)
+    for (var i = 0; i < types.length; i++) {
+      types[i] = arguments[i]
+    }
   }
-  return obj;
+
+  // no types, return all requested types
+  if (!types || types.length === 0) {
+    return this.negotiator.mediaTypes()
+  }
+
+  // no accept header, return first given type
+  if (!this.headers.accept) {
+    return types[0]
+  }
+
+  var mimes = types.map(extToMime)
+  var accepts = this.negotiator.mediaTypes(mimes.filter(validMime))
+  var first = accepts[0]
+
+  return first
+    ? types[mimes.indexOf(first)]
+    : false
 }
 
 /**
- * Listen on the given `event` with `fn`.
+ * Return accepted encodings or best fit based on `encodings`.
  *
- * @param {String} event
- * @param {Function} fn
- * @return {Emitter}
- * @api public
+ * Given `Accept-Encoding: gzip, deflate`
+ * an array sorted by quality is returned:
+ *
+ *     ['gzip', 'deflate']
+ *
+ * @param {String|Array} encodings...
+ * @return {String|Array}
+ * @public
  */
 
-Emitter.prototype.on =
-Emitter.prototype.addEventListener = function(event, fn){
-  this._callbacks = this._callbacks || {};
-  (this._callbacks['$' + event] = this._callbacks['$' + event] || [])
-    .push(fn);
-  return this;
-};
+Accepts.prototype.encoding =
+Accepts.prototype.encodings = function (encodings_) {
+  var encodings = encodings_
 
-/**
- * Adds an `event` listener that will be invoked a single
- * time then automatically removed.
- *
- * @param {String} event
- * @param {Function} fn
- * @return {Emitter}
- * @api public
- */
-
-Emitter.prototype.once = function(event, fn){
-  function on() {
-    this.off(event, on);
-    fn.apply(this, arguments);
-  }
-
-  on.fn = fn;
-  this.on(event, on);
-  return this;
-};
-
-/**
- * Remove the given callback for `event` or all
- * registered callbacks.
- *
- * @param {String} event
- * @param {Function} fn
- * @return {Emitter}
- * @api public
- */
-
-Emitter.prototype.off =
-Emitter.prototype.removeListener =
-Emitter.prototype.removeAllListeners =
-Emitter.prototype.removeEventListener = function(event, fn){
-  this._callbacks = this._callbacks || {};
-
-  // all
-  if (0 == arguments.length) {
-    this._callbacks = {};
-    return this;
-  }
-
-  // specific event
-  var callbacks = this._callbacks['$' + event];
-  if (!callbacks) return this;
-
-  // remove all handlers
-  if (1 == arguments.length) {
-    delete this._callbacks['$' + event];
-    return this;
-  }
-
-  // remove specific handler
-  var cb;
-  for (var i = 0; i < callbacks.length; i++) {
-    cb = callbacks[i];
-    if (cb === fn || cb.fn === fn) {
-      callbacks.splice(i, 1);
-      break;
+  // support flattened arguments
+  if (encodings && !Array.isArray(encodings)) {
+    encodings = new Array(arguments.length)
+    for (var i = 0; i < encodings.length; i++) {
+      encodings[i] = arguments[i]
     }
   }
 
-  // Remove event specific arrays for event types that no
-  // one is subscribed for to avoid memory leak.
-  if (callbacks.length === 0) {
-    delete this._callbacks['$' + event];
+  // no encodings, return all requested encodings
+  if (!encodings || encodings.length === 0) {
+    return this.negotiator.encodings()
   }
 
-  return this;
-};
+  return this.negotiator.encodings(encodings)[0] || false
+}
 
 /**
- * Emit `event` with the given args.
+ * Return accepted charsets or best fit based on `charsets`.
  *
- * @param {String} event
- * @param {Mixed} ...
- * @return {Emitter}
+ * Given `Accept-Charset: utf-8, iso-8859-1;q=0.2, utf-7;q=0.5`
+ * an array sorted by quality is returned:
+ *
+ *     ['utf-8', 'utf-7', 'iso-8859-1']
+ *
+ * @param {String|Array} charsets...
+ * @return {String|Array}
+ * @public
  */
 
-Emitter.prototype.emit = function(event){
-  this._callbacks = this._callbacks || {};
+Accepts.prototype.charset =
+Accepts.prototype.charsets = function (charsets_) {
+  var charsets = charsets_
 
-  var args = new Array(arguments.length - 1)
-    , callbacks = this._callbacks['$' + event];
-
-  for (var i = 1; i < arguments.length; i++) {
-    args[i - 1] = arguments[i];
-  }
-
-  if (callbacks) {
-    callbacks = callbacks.slice(0);
-    for (var i = 0, len = callbacks.length; i < len; ++i) {
-      callbacks[i].apply(this, args);
+  // support flattened arguments
+  if (charsets && !Array.isArray(charsets)) {
+    charsets = new Array(arguments.length)
+    for (var i = 0; i < charsets.length; i++) {
+      charsets[i] = arguments[i]
     }
   }
 
-  return this;
-};
+  // no charsets, return all requested charsets
+  if (!charsets || charsets.length === 0) {
+    return this.negotiator.charsets()
+  }
 
-// alias used for reserved events (protected method)
-Emitter.prototype.emitReserved = Emitter.prototype.emit;
-
-/**
- * Return array of callbacks for `event`.
- *
- * @param {String} event
- * @return {Array}
- * @api public
- */
-
-Emitter.prototype.listeners = function(event){
-  this._callbacks = this._callbacks || {};
-  return this._callbacks['$' + event] || [];
-};
+  return this.negotiator.charsets(charsets)[0] || false
+}
 
 /**
- * Check if this emitter has `event` handlers.
+ * Return accepted languages or best fit based on `langs`.
  *
- * @param {String} event
- * @return {Boolean}
- * @api public
+ * Given `Accept-Language: en;q=0.8, es, pt`
+ * an array sorted by quality is returned:
+ *
+ *     ['es', 'pt', 'en']
+ *
+ * @param {String|Array} langs...
+ * @return {Array|String}
+ * @public
  */
 
-Emitter.prototype.hasListeners = function(event){
-  return !! this.listeners(event).length;
-};
+Accepts.prototype.lang =
+Accepts.prototype.langs =
+Accepts.prototype.language =
+Accepts.prototype.languages = function (languages_) {
+  var languages = languages_
+
+  // support flattened arguments
+  if (languages && !Array.isArray(languages)) {
+    languages = new Array(arguments.length)
+    for (var i = 0; i < languages.length; i++) {
+      languages[i] = arguments[i]
+    }
+  }
+
+  // no languages, return all requested languages
+  if (!languages || languages.length === 0) {
+    return this.negotiator.languages()
+  }
+
+  return this.negotiator.languages(languages)[0] || false
+}
+
+/**
+ * Convert extnames to mime.
+ *
+ * @param {String} type
+ * @return {String}
+ * @private
+ */
+
+function extToMime (type) {
+  return type.indexOf('/') === -1
+    ? mime.lookup(type)
+    : type
+}
+
+/**
+ * Check if mime is valid.
+ *
+ * @param {String} type
+ * @return {String}
+ * @private
+ */
+
+function validMime (type) {
+  return typeof type === 'string'
+}
