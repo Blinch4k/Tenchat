@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TENCHAT</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .menu-container {
+      background-color: #4CAF50;
+      padding: 20px;
+      text-align: center;
+      color: white;
+    }
+
+    .menu-container h1 {
+      margin: 0;
+      font-size: 36px;
+    }
+
+    .chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 20px;
+      background-color: #fff;
+      overflow-y: auto;
+      height: calc(100vh - 140px);
+    }
+
+    .message {
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      max-width: 70%;
+      word-wrap: break-word;
+      margin: 5px 0;
+    }
+
+    .message.user1 {
+      background-color: #e0e0e0;
+      align-self: flex-start;
+    }
+
+    .message.user2 {
+      background-color: #4CAF50;
+      color: white;
+      align-self: flex-end;
+    }
+
+    .message-username {
+      font-weight: bold;
+      font-size: 14px;
+      display: inline-block;
+      margin-bottom: 5px;
+    }
+
+    .input-container {
+      display: flex;
+      padding: 10px;
+      background-color: #fff;
+      border-top: 1px solid #ccc;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background-color: #fff;
+      z-index: 10;
+    }
+
+    .message-input {
+      width: 80%;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      margin-right: 10px;
+      max-width: calc(100% - 120px);
+    }
+
+    .send-button {
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      color: white;
+      font-size: 14px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 35%;
+    }
+
+    .send-button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .user-info {
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      text-align: center;
+      font-size: 16px;
+      border-bottom: 2px solid #fff;
+    }
+
+    .name-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      margin-top: 50px;
+    }
+
+    .name-input {
+      padding: 15px;
+      font-size: 18px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      width: 300px;
+      margin-bottom: 20px;
+    }
+
+    .start-chat-button {
+      padding: 15px 30px;
+      background-color: #4CAF50;
+      color: white;
+      font-size: 18px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .start-chat-button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .error-message {
+      color: red;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    .version {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      font-size: 12px;
+      color: #888;
+    }
+
+    .char-count {
+      font-size: 14px;
+      margin-left: 10px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="menu-container">
+    <h1>TENCHAT</h1>
+  </div>
+
+  <!-- Форма ввода имени -->
+  <div id="nameContainer" class="name-container">
+    <h2>Введите ваше имя для начала общения:</h2>
+    <input id="usernameInput" class="name-input" type="text" placeholder="Ваше имя" />
+    <button id="startChatButton" class="start-chat-button" disabled>Начать чат</button>
+    <div id="errorMessage" class="error-message" style="display: none;">
+      Имя должно быть от 6 до 16 символов или оно уже занято.
+    </div>
+  </div>
+
+  <!-- Чат -->
+  <div id="chatSection" style="display: none;">
+    <div class="user-info" id="userInfo">
+      Пользователей онлайн: 0
+    </div>
+
+    <div class="chat-container" id="chatContainer">
+      <!-- Здесь будут сообщения -->
+    </div>
+
+    <div class="input-container">
+      <input id="messageInput" class="message-input" type="text" maxlength="256" placeholder="Введите сообщение..." />
+      <button id="sendMessage" class="send-button" disabled>Отправить</button>
+      <div id="charCount" class="char-count">Осталось символов: 256</div>
+    </div>
+  </div>
+
+  <div class="version">
+    Beta 0.1.1
+  </div>
+
+  <script>
+    const socket = new WebSocket('ws://localhost:3000');
+    const startChatButton = document.getElementById('startChatButton');
+    const usernameInput = document.getElementById('usernameInput');
+    const messageInput = document.getElementById('messageInput');
+    const chatContainer = document.getElementById('chatContainer');
+    const sendMessageButton = document.getElementById('sendMessage');
+    const userInfo = document.getElementById('userInfo');
+    const nameContainer = document.getElementById('nameContainer');
+    const chatSection = document.getElementById('chatSection');
+    const errorMessage = document.getElementById('errorMessage');
+    const charCount = document.getElementById('charCount');
+    let username = '';
+    let takenNames = [];
+
+    function validateUsername() {
+      const name = usernameInput.value.trim();
+      if (name.length >= 6 && name.length <= 16 && !takenNames.includes(name)) {
+        startChatButton.disabled = false;
+      } else {
+        startChatButton.disabled = true;
+      }
+    }
+
+    function displayMessage(username, text) {
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('message');
+      messageDiv.classList.add(username === 'user1' ? 'user1' : 'user2');
+      messageDiv.innerHTML = `<div class="message-username">${username}</div><div class="message-text">${text}</div>`;
+      chatContainer.appendChild(messageDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Обработка кнопки для старта чата
+    startChatButton.addEventListener('click', () => {
+      username = usernameInput.value.trim();
+      socket.send(JSON.stringify({ type: 'join', username }));
+      nameContainer.style.display = 'none';
+      chatSection.style.display = 'block';
+      messageInput.focus();
+    });
+
+    // Обработка ввода сообщений
+    messageInput.addEventListener('input', () => {
+      sendMessageButton.disabled = messageInput.value.trim().length === 0;
+      charCount.textContent = `Осталось символов: ${256 - messageInput.value.length}`;
+    });
+
+    // Отправка сообщения
+    sendMessageButton.addEventListener('click', () => {
+      const message = messageInput.value.trim();
+      if (message) {
+        socket.send(JSON.stringify({ type: 'message', text: message }));
+        messageInput.value = '';
+        sendMessageButton.disabled = true;
+      }
+    });
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'updateOnline') {
+        userInfo.textContent = `Пользователей онлайн: ${data.count}`;
+      } else if (data.type === 'message') {
+        displayMessage(data.username, data.text);
+      } else if (data.type === 'error') {
+        errorMessage.style.display = 'block';
+      }
+    };
+  </script>
+
+</body>
+</html>
